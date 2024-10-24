@@ -1,6 +1,6 @@
 # User-Friendly HTTP and HTTPS (HTTP over TLS) Proxy Server
 
-**Subscribe to us on [Telegram](https://t.me/macproxer) to receive notifications about new versions and updates.**
+> **Subscribe to us on [Telegram](https://t.me/macproxer) to receive notifications about new versions and updates.**
 
 Create your own HTTP and/or HTTPS (HTTP over TLS) proxy server with one click. Use this proxy to enhance the security of your internet connections or to bypass restrictions.
 
