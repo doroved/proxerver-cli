@@ -7,7 +7,7 @@ pub struct Opt {
     #[clap(
         long,
         value_name = "u16",
-        help = "Specify the HTTP port. Default: 8080"
+        help = "Specify the HTTP port. Default: 58080"
     )]
     pub http_port: Option<u16>,
 

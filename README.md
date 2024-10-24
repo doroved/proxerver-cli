@@ -38,7 +38,7 @@ User Friendly HTTP and HTTPS (HTTP over TLS) proxy server.
 Usage: proxerver [OPTIONS]
 
 Options:
-      --http-port <u16>   Specify the HTTP port. Default: 8080
+      --http-port <u16>   Specify the HTTP port. Default: 58080
       --https-port <u16>  Specify the HTTPS port. Default: 443
       --no-http-server    Disable the HTTP proxy server
       --no-https-server   Disable the HTTPS proxy server
@@ -55,7 +55,7 @@ Options:
 
 ## Command Examples to Start the Proxy Server
 
-Starting the HTTP and HTTPS proxy server on ports 8080 and 443 without authentication:
+Starting the HTTP and HTTPS proxy server on ports 58080 and 443 without authentication:
 
 ```bash
 proxerver --cert cert.crt --pkey private.key

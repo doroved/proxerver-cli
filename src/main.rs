@@ -46,7 +46,7 @@ async fn main() {
             return;
         }
 
-        let http_port = options.http_port.unwrap_or(8080);
+        let http_port = options.http_port.unwrap_or(58080);
         let proxy_url = format!("http://{server_ip}:{http_port}");
 
         if allowed_credentials.is_empty() {
