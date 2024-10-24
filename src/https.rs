@@ -160,7 +160,7 @@ pub async fn start_proxy(
                             }
 
                             // If secret token is not empty and no_http_token is false, check if the secret token is valid
-                            if !secret_token.is_empty() && !options.no_http_token {
+                            if !secret_token.is_empty() && !options.no_https_token {
                                 if let Some(secret_token_header) =
                                     headers.get("x-https-secret-token")
                                 {

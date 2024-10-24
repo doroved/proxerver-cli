@@ -2,5 +2,4 @@
 README-PRIVATE.md
 README-RU.md
 cloud-init.yml
-*.crt
-*.key
+*.pem
