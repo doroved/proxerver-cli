@@ -17,7 +17,7 @@ hyper = { version = "0.14", features = [
 	"http1",
 	"runtime",
 ] }
-tokio = { version = "1", features = [
+tokio = { version = "1.41.0", features = [
 	"net",
 	"rt-multi-thread",
 	"macros",

@@ -109,6 +109,104 @@ Remove the background process proxerver:
 kill $(pgrep proxerver)
 ```
 
+## Free Domain + Let's Encrypt Certificate for HTTPS Proxy Server
+
+To run an HTTPS proxy server, you need a domain with a certificate that points to your server's IP.
+Let's show an example of how to quickly and for free get a domain and create a Let's Encrypt certificate for it.
+
+1. Go to the website https://freemyip.com, enter any subdomain name and click the "Check availability" button. If the domain is available, click "Claim it!" and you will be redirected to the page with domain data, save the link to it.
+2. Copy the very first link on the page, for example:
+
+```
+https://freemyip.com/update?token=d41d8cd98f00b204e9800998ecf8427e&domain=proxerver.freemyip.com
+```
+
+3. Now you need to point the domain to your server's IP, go to your server's terminal and run the command:
+
+```bash
+curl 'https://freemyip.com/update?token=d41d8cd98f00b204e9800998ecf8427e&domain=proxerver.freemyip.com'
+```
+
+This command should return: `OK`
+
+4. Check DNS and availability.
+
+Make sure your domain is correctly set up and points to your server. You can check this using the `ping` command:
+
+```bash
+ping yourdomain.com
+```
+
+Example output of the command, in parentheses should be your server's IP:
+
+```bash
+ping proxerver.freemyip.com
+PING proxerver.freemyip.com (188.245.196.139): 56 data bytes ...
+```
+
+5. Let's install the certbot utility, which will allow you to create a certificate for your domain:
+
+```bash
+sudo apt update
+sudo apt install certbot
+```
+
+6. Now let's get a certificate for your domain. This command will issue a TXT record that needs to be set for your domain, do not press Enter until you complete the next step:
+
+```bash
+sudo certbot certonly --manual --preferred-challenges dns -d yourdomain.com
+```
+
+Instead of `yourdomain.com`, specify your domain.
+
+7. Domain ownership confirmation.
+
+After running the Certbot command, it will provide you with DNS records that need to be added to your domain settings. This is a TXT record that confirms your right to the domain.
+
+- Go back to the page with information about your domain, copy the second-to-last link, delete everything after `&txt=` and substitute the string you received from the previous command. For example:
+
+```
+https://freemyip.com/update?token=d41d8cd98f00b204e9800998ecf8427e&domain=proxerver.freemyip.com&txt=apcx6XDVONVt7oVOrUeyW1q2OILitMT_21iOnmUxW4Q
+```
+
+- Now you need to open this link in a browser or use the terminal of your server or MacBook to set the TXT record for domain ownership verification.
+
+```bash
+curl 'https://freemyip.com/update?token=d41d8cd98f00b204e9800998ecf8427e&domain=proxerver.freemyip.com&txt=apcx6XDVONVt7oVOrUeyW1q2OILitMT_21iOnmUxW4Q'
+```
+
+- Wait for the TXT record to be set in the domain's DNS servers. You can check this using the `dig` command:
+
+```bash
+dig +short TXT yourdomain.com
+"apcx6XDVONVt7oVOrUeyW1q2OILitMT_21iOnmUxW4Q"
+```
+
+If the record appears, return to step 6 and press Enter.
+After that, a certificate will be created in the `/etc/letsencrypt/live/yourdomain.com/` folder.
+
+Now, when creating the HTTPS server, just specify the paths to the certificate and key files in the command parameters:
+
+```
+--cert '/etc/letsencrypt/live/yourdomain.com/fullchain.pem' --pkey '/etc/letsencrypt/live/yourdomain.com/privkey.pem'
+```
+
+8. Automatic update setup (optional)
+
+Although you create the certificate manually, it is recommended to automate the renewal process. You can add a cron job for automatic certificate renewal:
+
+```bash
+sudo crontab -e
+```
+
+Add the following line at the end to check for updates, for example:
+
+```bash
+0 0 * * * certbot renew --quiet
+```
+
+This will check and renew the certificate daily at midnight.
+
 ## Local Build via OrbStack
 
 1. Install OrbStack https://orbstack.dev/download and create 2 virtual machines Ubuntu 22.04 x86_64 (amd64) and aarch64 (arm64).
