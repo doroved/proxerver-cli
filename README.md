@@ -154,10 +154,12 @@ sudo apt install certbot
 6. Now let's get a certificate for your domain. This command will issue a TXT record that needs to be set for your domain, do not press Enter until you complete the next step:
 
 ```bash
-sudo certbot certonly --manual --preferred-challenges dns -d yourdomain.com
+sudo certbot certonly --manual --preferred-challenges dns --agree-tos -m your@email.com -d yourdomain.com
 ```
 
 Instead of `yourdomain.com`, specify your domain.
+
+`your@email.com` - specify your email address.
 
 7. Domain ownership confirmation.
 
