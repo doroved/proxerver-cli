@@ -1,0 +1,49 @@
+[package]
+name = "proxerver"
+version = "0.1.0"
+edition = "2021"
+authors = ["doroved"]
+description = "User Friendly HTTP and HTTPS (HTTP over TLS) proxy server."
+readme = "README.md"
+repository = "https://github.com/doroved/proxerver"
+license = "MIT OR Apache-2.0"
+keywords = ["proxy", "proxy-server", "http", "https", "http-over-tls"]
+categories = ["command-line-utilities", "network-programming"]
+
+[dependencies]
+hyper = { version = "0.14", features = [
+	"client",
+	"server",
+	"http1",
+	"runtime",
+] }
+tokio = { version = "1", features = [
+	"net",
+	"rt-multi-thread",
+	"macros",
+	"io-util",
+] }
+base64 = "0.22.1"
+wildmatch = "2.3.0"
+daemonize = "0.5.0"
+rand = "0.8.5"
+futures-util = "0.3.30"
+clap = { version = "4.5.20", features = ["derive"] }
+sha2 = "0.10.8"
+
+# http over tls. Если обновить 3 крейта ниже, то все сломается в https.rs
+rustls = "0.20"
+tokio-rustls = "0.23"
+hyper-tls = "0.5"
+
+rustls-pemfile = "2.2.0"
+rustls-pki-types = "1.9.0"
+lazy_static = "1.5.0"
+chrono = "0.4.38"
+
+[profile.release]
+panic = "abort"   # Strip expensive panic clean-up logic
+codegen-units = 1 # Compile crates one after another so the compiler can optimize better
+lto = true        # Enables link to optimizations
+opt-level = "z"   # Optimize for binary size s = 1.9 mb (aarch64) | z = 1.8 mb (aarch64)
+strip = true      # Remove debug symbols
