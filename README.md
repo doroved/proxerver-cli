@@ -1,4 +1,4 @@
-# User-Friendly HTTP and HTTPS (HTTP over TLS) Proxy Server
+# Proxerver
 
 > **Subscribe to us on [Telegram](https://t.me/macproxer) to receive notifications about new versions and updates.**
 
