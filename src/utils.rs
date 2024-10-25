@@ -70,7 +70,7 @@ pub async fn get_server_ip() -> String {
 
     if output.status.success() {
         if output.stdout.is_empty() {
-            return "0.0.0.0".to_string();
+            "0.0.0.0".to_string()
         } else {
             return String::from_utf8_lossy(&output.stdout).trim().to_string();
         }

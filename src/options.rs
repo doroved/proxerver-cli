@@ -90,11 +90,9 @@ pub struct Opt {
 
 impl Opt {
     pub fn validate(&self) {
-        if self.no_https_server {
-            if self.cert.is_some() || self.pkey.is_some() {
-                eprintln!("Error: --cert or --pkey cannot be used with --no-https");
-                exit(1);
-            }
+        if self.no_https_server && (self.cert.is_some() || self.pkey.is_some()) {
+            eprintln!("Error: --cert or --pkey cannot be used with --no-https");
+            exit(1);
         }
     }
 }

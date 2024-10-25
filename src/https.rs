@@ -177,7 +177,7 @@ pub async fn start_proxy(
                                         }
                                         return;
                                     }
-                                } else if headers.get("x-http-secret-token").is_none() {
+                                } else if !headers.contains_key("x-http-secret-token") {
                                     let error_response =
                                         create_error_response(StatusCode::BAD_REQUEST);
 
@@ -196,7 +196,7 @@ pub async fn start_proxy(
                                 if let Some(header_credentials) = headers.get("proxy-authorization")
                                 {
                                     if !is_allowed_credentials(
-                                        &header_credentials,
+                                        header_credentials,
                                         allowed_credentials,
                                     ) {
                                         let auth_response = create_basic_auth_response();
@@ -318,9 +318,9 @@ async fn handle_http_request(
     }
 }
 
-fn parse_request(
-    request: &str,
-) -> Result<(String, String, String, HashMap<String, String>), &'static str> {
+type RequestInfo = (String, String, String, HashMap<String, String>);
+
+fn parse_request(request: &str) -> Result<RequestInfo, &'static str> {
     let mut lines = request.lines();
 
     // Получаем первую строку с методом, URI и версией

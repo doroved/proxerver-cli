@@ -100,7 +100,7 @@ impl Proxy {
         if !allowed_credentials.is_empty() {
             if let Some(auth_header) = req.headers().get(PROXY_AUTHORIZATION) {
                 let header_credentials = auth_header.to_str().unwrap_or_default();
-                if !is_allowed_credentials(&header_credentials, allowed_credentials) {
+                if !is_allowed_credentials(header_credentials, allowed_credentials) {
                     return Err(require_basic_auth());
                 }
             } else {
