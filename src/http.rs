@@ -173,13 +173,12 @@ pub async fn start_proxy(
     };
 
     let make_service = make_service_fn(move |addr: &AddrStream| {
+        let proxy_clone = proxy.clone();
         let time = formatted_time();
         println!(
             "\n\x1b[1m[{time}] [HTTP server] New connection from: {}\x1b[0m",
             addr.remote_addr()
         );
-
-        let proxy_clone = proxy.clone();
 
         async move { Ok::<_, hyper::Error>(service_fn(move |req| proxy_clone.clone().proxy(req))) }
     });
@@ -189,5 +188,5 @@ pub async fn start_proxy(
         .http1_title_case_headers(true)
         .serve(make_service)
         .await
-        .map_err(|err| err.into())
+        .map_err(Into::into)
 }
