@@ -15,7 +15,7 @@ use hyper::{
 };
 use std::{
     net::{IpAddr, SocketAddr, ToSocketAddrs},
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -24,9 +24,9 @@ use tokio::{
 
 #[derive(Debug, Clone)]
 pub(crate) struct Proxy {
-    pub allowed_credentials: Arc<Mutex<Vec<String>>>,
-    pub allowed_hosts: Arc<Mutex<Vec<String>>>,
-    pub secret_token: Arc<Mutex<String>>,
+    pub allowed_credentials: Arc<RwLock<Vec<String>>>,
+    pub allowed_hosts: Arc<RwLock<Vec<String>>>,
+    pub secret_token: Arc<RwLock<String>>,
 }
 
 impl Proxy {
@@ -61,7 +61,7 @@ impl Proxy {
 
     async fn check_allowed_hosts(&self, req: &Request<Body>) -> Result<(), Response<Body>> {
         let host = req.uri().host().unwrap_or("");
-        let allowed_hosts = self.allowed_hosts.lock().unwrap().to_vec();
+        let allowed_hosts = self.allowed_hosts.read().unwrap().to_vec();
         if !allowed_hosts.is_empty() && !is_host_allowed(host, &allowed_hosts) {
             return Err(Response::builder()
                 .status(StatusCode::BAD_REQUEST)
@@ -74,7 +74,7 @@ impl Proxy {
     async fn check_secret_token(&self, req: &Request<Body>) -> Result<(), Response<Body>> {
         let options = Opt::parse();
 
-        let secret_token = self.secret_token.lock().unwrap().to_string();
+        let secret_token = self.secret_token.read().unwrap().to_string();
         if !secret_token.is_empty() && !options.no_http_token {
             if let Some(secret_token_header) = req.headers().get("x-http-secret-token") {
                 if secret_token_header.to_str().unwrap_or_default().trim()
@@ -96,7 +96,7 @@ impl Proxy {
     }
 
     async fn check_credentials(&self, req: &Request<Body>) -> Result<(), Response<Body>> {
-        let allowed_credentials = self.allowed_credentials.lock().unwrap().to_vec();
+        let allowed_credentials = self.allowed_credentials.read().unwrap().to_vec();
         if !allowed_credentials.is_empty() {
             if let Some(auth_header) = req.headers().get(PROXY_AUTHORIZATION) {
                 let header_credentials = auth_header.to_str().unwrap_or_default();
@@ -167,9 +167,9 @@ pub async fn start_proxy(
     secret_token: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let proxy = Proxy {
-        allowed_credentials: Arc::new(Mutex::new(allowed_credentials)),
-        allowed_hosts: Arc::new(Mutex::new(allowed_hosts)),
-        secret_token: Arc::new(Mutex::new(secret_token)),
+        allowed_credentials: Arc::new(RwLock::new(allowed_credentials)),
+        allowed_hosts: Arc::new(RwLock::new(allowed_hosts)),
+        secret_token: Arc::new(RwLock::new(secret_token)),
     };
 
     let make_service = make_service_fn(move |addr: &AddrStream| {

@@ -6,11 +6,11 @@ use rand::Rng;
 use sha2::{Digest, Sha256};
 use std::net::{IpAddr, SocketAddr};
 use std::process::Command;
-use std::sync::Mutex;
+use std::sync::RwLock;
 use wildmatch::WildMatch;
 
 lazy_static! {
-    pub static ref SERVER_IP: Mutex<String> = Mutex::new("0.0.0.0".to_string());
+    pub static ref SERVER_IP: RwLock<String> = RwLock::new("0.0.0.0".to_string());
 }
 
 pub fn get_rand_ipv4_socket_addr() -> SocketAddr {
@@ -82,12 +82,12 @@ pub async fn get_server_ip() -> String {
 pub async fn update_server_ip() {
     let server_ip = get_server_ip().await;
 
-    let mut ip = SERVER_IP.lock().unwrap();
+    let mut ip = SERVER_IP.write().unwrap();
     *ip = server_ip;
 }
 
 pub fn get_current_server_ip() -> String {
-    SERVER_IP.lock().unwrap().clone()
+    SERVER_IP.read().unwrap().clone()
 }
 
 pub fn to_sha256(input: &str) -> String {
