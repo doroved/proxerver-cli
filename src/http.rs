@@ -37,50 +37,19 @@ impl Proxy {
         println!("Headers: {:?}", req.headers());
         println!("Body: {:?}", req.body());
 
-        let options = Opt::parse();
-
         // Check request for inclusion in the white list of hosts that can be proxied
-        let host = req.uri().host().unwrap_or("");
-        let allowed_hosts = self.allowed_hosts.lock().unwrap().to_vec();
-        if !allowed_hosts.is_empty() && !is_host_allowed(host, &allowed_hosts) {
-            return Ok(Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .body(Body::empty())
-                .unwrap());
+        if let Err(response) = self.check_allowed_hosts(&req).await {
+            return Ok(response);
         }
 
         // If secret token is not empty and no_http_token is false, check if the secret token is valid
-        let secret_token = self.secret_token.lock().unwrap().to_string();
-        if !secret_token.is_empty() && !options.no_http_token {
-            if let Some(secret_token_header) = req.headers().get("x-http-secret-token") {
-                if secret_token_header.to_str().unwrap_or_default().trim()
-                    != to_sha256(secret_token.trim())
-                {
-                    return Ok(Response::builder()
-                        .status(StatusCode::BAD_REQUEST)
-                        .body(Body::empty())
-                        .unwrap());
-                }
-            } else if req.headers().get("x-https-secret-token").is_none() {
-                return Ok(Response::builder()
-                    .status(StatusCode::BAD_REQUEST)
-                    .body(Body::empty())
-                    .unwrap());
-            }
+        if let Err(response) = self.check_secret_token(&req).await {
+            return Ok(response);
         }
 
         // Process authentication if a list of login:password pairs is specified
-        let allowed_credentials = self.allowed_credentials.lock().unwrap().to_vec();
-        if !allowed_credentials.is_empty() {
-            if let Some(auth_header) = req.headers().get(PROXY_AUTHORIZATION) {
-                let header_credentials = auth_header.to_str().unwrap_or_default();
-
-                if !is_allowed_credentials(&header_credentials, allowed_credentials) {
-                    return Ok(require_basic_auth());
-                }
-            } else {
-                return Ok(require_basic_auth());
-            }
+        if let Err(response) = self.check_credentials(&req).await {
+            return Ok(response);
         }
 
         // Process method and call the appropriate handler
@@ -88,6 +57,57 @@ impl Proxy {
             &Method::CONNECT => self.process_connect(req).await,
             _ => self.process_request(req).await,
         }
+    }
+
+    async fn check_allowed_hosts(&self, req: &Request<Body>) -> Result<(), Response<Body>> {
+        let host = req.uri().host().unwrap_or("");
+        let allowed_hosts = self.allowed_hosts.lock().unwrap().to_vec();
+        if !allowed_hosts.is_empty() && !is_host_allowed(host, &allowed_hosts) {
+            return Err(Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Body::empty())
+                .unwrap());
+        }
+        Ok(())
+    }
+
+    async fn check_secret_token(&self, req: &Request<Body>) -> Result<(), Response<Body>> {
+        let options = Opt::parse();
+
+        let secret_token = self.secret_token.lock().unwrap().to_string();
+        if !secret_token.is_empty() && !options.no_http_token {
+            if let Some(secret_token_header) = req.headers().get("x-http-secret-token") {
+                if secret_token_header.to_str().unwrap_or_default().trim()
+                    != to_sha256(secret_token.trim())
+                {
+                    return Err(Response::builder()
+                        .status(StatusCode::BAD_REQUEST)
+                        .body(Body::empty())
+                        .unwrap());
+                }
+            } else if req.headers().get("x-https-secret-token").is_none() {
+                return Err(Response::builder()
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(Body::empty())
+                    .unwrap());
+            }
+        }
+        Ok(())
+    }
+
+    async fn check_credentials(&self, req: &Request<Body>) -> Result<(), Response<Body>> {
+        let allowed_credentials = self.allowed_credentials.lock().unwrap().to_vec();
+        if !allowed_credentials.is_empty() {
+            if let Some(auth_header) = req.headers().get(PROXY_AUTHORIZATION) {
+                let header_credentials = auth_header.to_str().unwrap_or_default();
+                if !is_allowed_credentials(&header_credentials, allowed_credentials) {
+                    return Err(require_basic_auth());
+                }
+            } else {
+                return Err(require_basic_auth());
+            }
+        }
+        Ok(())
     }
 
     async fn process_connect(self, req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
@@ -146,9 +166,11 @@ pub async fn start_proxy(
     allowed_hosts: Vec<String>,
     secret_token: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let allowed_credentials_arc = Arc::new(Mutex::new(allowed_credentials));
-    let allowed_hosts_arc = Arc::new(Mutex::new(allowed_hosts));
-    let secret_token_arc = Arc::new(Mutex::new(secret_token));
+    let proxy = Proxy {
+        allowed_credentials: Arc::new(Mutex::new(allowed_credentials)),
+        allowed_hosts: Arc::new(Mutex::new(allowed_hosts)),
+        secret_token: Arc::new(Mutex::new(secret_token)),
+    };
 
     let make_service = make_service_fn(move |addr: &AddrStream| {
         let time = formatted_time();
@@ -157,20 +179,9 @@ pub async fn start_proxy(
             addr.remote_addr()
         );
 
-        let allowed_credentials_clone = allowed_credentials_arc.clone();
-        let allowed_hosts_clone = allowed_hosts_arc.clone();
-        let secret_token_clone = secret_token_arc.clone();
+        let proxy_clone = proxy.clone();
 
-        async move {
-            Ok::<_, hyper::Error>(service_fn(move |req| {
-                Proxy {
-                    allowed_credentials: allowed_credentials_clone.clone(),
-                    allowed_hosts: allowed_hosts_clone.clone(),
-                    secret_token: secret_token_clone.clone(),
-                }
-                .proxy(req)
-            }))
-        }
+        async move { Ok::<_, hyper::Error>(service_fn(move |req| proxy_clone.clone().proxy(req))) }
     });
 
     Server::bind(&listen_addr)
