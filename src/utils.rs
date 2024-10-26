@@ -1,19 +1,15 @@
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::process::Command;
+
 use base64::{engine::general_purpose::STANDARD as b64, Engine};
 use chrono::Local;
 use hyper::{header::PROXY_AUTHENTICATE, Body, Response, StatusCode};
 use rand::Rng;
 use sha2::{Digest, Sha256};
-use std::net::{IpAddr, SocketAddr};
-use std::process::Command;
-use std::sync::OnceLock;
 use wildmatch::WildMatch;
 
-static SERVER_IP: OnceLock<IpAddr> = OnceLock::new();
-
-pub fn get_rand_ipv4_socket_addr() -> SocketAddr {
+pub fn get_rand_ipv4_socket_addr(server_ip_addr: IpAddr) -> SocketAddr {
     let mut rng = rand::thread_rng();
-    let server_ip_addr = get_current_server_ip();
-
     SocketAddr::new(server_ip_addr, rng.gen::<u16>())
 }
 
@@ -39,26 +35,26 @@ pub fn create_basic_auth_response() -> Vec<u8> {
 }
 
 pub fn is_host_allowed(req_host: &str, allowed_hosts: &[String]) -> bool {
-    for allowed_host in allowed_hosts {
-        if WildMatch::new(allowed_host.as_str()).matches(req_host) {
+    for host in allowed_hosts {
+        if WildMatch::new(host.as_str()).matches(req_host) {
             return true;
         }
     }
     false
 }
 
-pub fn is_allowed_credentials(credentials_header: &str, allowed_credentials: &[String]) -> bool {
-    for credentials in allowed_credentials {
-        let allowed_credentials = b64.encode(credentials);
+pub fn is_credentials_allowed(credentials_header: &str, credentials_allowed: &[String]) -> bool {
+    for credentials in credentials_allowed {
+        let credentials_allowed = b64.encode(credentials);
 
-        if credentials_header.contains(&allowed_credentials) {
+        if credentials_header.contains(&credentials_allowed) {
             return true;
         }
     }
     false
 }
 
-pub async fn get_server_ip() -> String {
+pub async fn get_server_ip() -> IpAddr {
     let output = Command::new("sh")
         .arg("-c")
         .arg("hostname -I | awk '{print $1}'")
@@ -67,25 +63,23 @@ pub async fn get_server_ip() -> String {
 
     if output.status.success() {
         if output.stdout.is_empty() {
-            "0.0.0.0".to_string()
+            IpAddr::V4(Ipv4Addr::UNSPECIFIED)
         } else {
-            return String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if output.stdout.is_empty() {
+                return IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+            }
+
+            match String::from_utf8_lossy(&output.stdout)
+                .trim()
+                .parse::<IpAddr>()
+            {
+                Ok(ip) => ip,
+                Err(e) => panic!("Failed to parse IP address: {}", e),
+            }
         }
     } else {
         panic!("Failed to get Server IP: {:?}", output.status);
     }
-}
-
-pub async fn update_server_ip() {
-    let server_ip = get_server_ip().await;
-
-    SERVER_IP
-        .set(server_ip.parse::<IpAddr>().unwrap())
-        .expect("SERVER_IP уже инициализирован");
-}
-
-pub fn get_current_server_ip() -> IpAddr {
-    *SERVER_IP.get().expect("SERVER_IP не инициализирован")
 }
 
 pub fn to_sha256(input: &str) -> String {

@@ -1,11 +1,14 @@
 use crate::{
     options::Opt,
     utils::{
-        formatted_time, get_current_server_ip, get_rand_ipv4_socket_addr, is_allowed_credentials,
-        is_host_allowed, require_basic_auth, to_sha256,
+        formatted_time, get_rand_ipv4_socket_addr, is_credentials_allowed, is_host_allowed,
+        require_basic_auth, to_sha256,
     },
 };
+
 use clap::Parser;
+use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
+
 use hyper::{
     client::HttpConnector,
     header::PROXY_AUTHORIZATION,
@@ -13,7 +16,7 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Client, Method, Request, Response, Server, StatusCode,
 };
-use std::net::{SocketAddr, ToSocketAddrs};
+
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     net::TcpSocket,
@@ -27,7 +30,11 @@ pub(crate) struct Proxy {
 }
 
 impl Proxy {
-    pub(crate) async fn proxy(self, req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    pub(crate) async fn proxy(
+        self,
+        req: Request<Body>,
+        server_ip: IpAddr,
+    ) -> Result<Response<Body>, hyper::Error> {
         println!("Method: {:?}", req.method());
         println!("URI: {:?}", req.uri());
         println!("Version: {:?}", req.version());
@@ -51,8 +58,8 @@ impl Proxy {
 
         // Process method and call the appropriate handler
         match req.method() {
-            &Method::CONNECT => self.process_connect(req).await,
-            _ => self.process_request(req).await,
+            &Method::CONNECT => self.process_connect(req, server_ip).await,
+            _ => self.process_request(req, server_ip).await,
         }
     }
 
@@ -94,7 +101,7 @@ impl Proxy {
         if !self.allowed_credentials.is_empty() {
             if let Some(auth_header) = req.headers().get(PROXY_AUTHORIZATION) {
                 let header_credentials = auth_header.to_str().unwrap_or_default();
-                if !is_allowed_credentials(header_credentials, &self.allowed_credentials) {
+                if !is_credentials_allowed(header_credentials, &self.allowed_credentials) {
                     return Err(require_basic_auth());
                 }
             } else {
@@ -104,22 +111,28 @@ impl Proxy {
         Ok(())
     }
 
-    async fn process_connect(self, req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    async fn process_connect(
+        self,
+        req: Request<Body>,
+        server_ip: IpAddr,
+    ) -> Result<Response<Body>, hyper::Error> {
         tokio::task::spawn(async move {
             let remote_addr = req.uri().authority().map(|auth| auth.to_string()).unwrap();
             let mut upgraded = hyper::upgrade::on(req).await.unwrap();
 
-            self.tunnel(&mut upgraded, remote_addr).await
+            self.tunnel(&mut upgraded, remote_addr, server_ip).await
         });
 
         Ok(Response::new(Body::empty()))
     }
 
-    async fn process_request(self, req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
-        let bind_addr = get_current_server_ip();
-
+    async fn process_request(
+        self,
+        req: Request<Body>,
+        server_ip: IpAddr,
+    ) -> Result<Response<Body>, hyper::Error> {
         let mut http = HttpConnector::new();
-        http.set_local_address(Some(bind_addr));
+        http.set_local_address(Some(server_ip));
 
         let client = Client::builder()
             .http1_title_case_headers(true)
@@ -130,14 +143,19 @@ impl Proxy {
         Ok(res)
     }
 
-    async fn tunnel<A>(self, upgraded: &mut A, addr_str: String) -> std::io::Result<()>
+    async fn tunnel<A>(
+        self,
+        upgraded: &mut A,
+        addr_str: String,
+        server_ip: IpAddr,
+    ) -> std::io::Result<()>
     where
         A: AsyncRead + AsyncWrite + Unpin + ?Sized,
     {
         if let Ok(addrs) = addr_str.to_socket_addrs() {
             for addr in addrs {
                 let socket = TcpSocket::new_v4()?;
-                let bind_addr = get_rand_ipv4_socket_addr();
+                let bind_addr = get_rand_ipv4_socket_addr(server_ip);
 
                 if socket.bind(bind_addr).is_ok() {
                     if let Ok(mut server) = socket.connect(addr).await {
@@ -167,14 +185,20 @@ pub async fn start_proxy(
     };
 
     let make_service = make_service_fn(move |addr: &AddrStream| {
+        let server_ip = listen_addr.ip();
         let proxy_clone = proxy.clone();
         let time = formatted_time();
+
         println!(
             "\n\x1b[1m[{time}] [HTTP server] New connection from: {}\x1b[0m",
             addr.remote_addr()
         );
 
-        async move { Ok::<_, hyper::Error>(service_fn(move |req| proxy_clone.clone().proxy(req))) }
+        async move {
+            Ok::<_, hyper::Error>(service_fn(move |req| {
+                proxy_clone.clone().proxy(req, server_ip)
+            }))
+        }
     });
 
     Server::bind(&listen_addr)

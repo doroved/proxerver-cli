@@ -1,3 +1,8 @@
+use crate::options::Opt;
+use crate::utils::{
+    create_basic_auth_response, formatted_time, is_credentials_allowed, is_host_allowed, to_sha256,
+};
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Error as IoError, ErrorKind};
@@ -5,10 +10,12 @@ use std::net::SocketAddr;
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
 
-use clap::Parser;
 use hyper::header::{HeaderName, HeaderValue};
+use hyper::http::HeaderMap;
 use hyper::{Body, StatusCode};
+use hyper::{Client, Request as HttpRequest};
 use hyper_tls::HttpsConnector;
+
 use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::read_one;
 
@@ -16,14 +23,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpSocket, TcpStream};
 use tokio_rustls::TlsAcceptor;
 
-use crate::options::Opt;
-use crate::utils::{
-    create_basic_auth_response, formatted_time, is_allowed_credentials, is_host_allowed, to_sha256,
-};
-
-use hyper::http::HeaderMap;
-use hyper::{Client, Request as HttpRequest};
-// use hyper_tls::HttpsConnector;
+use clap::Parser;
 
 async fn tunnel_to_remote<A>(upgraded: &mut A, addr: String) -> std::io::Result<()>
 where
@@ -195,7 +195,7 @@ pub async fn start_proxy(
                             if !allowed_credentials.is_empty() {
                                 if let Some(header_credentials) = headers.get("proxy-authorization")
                                 {
-                                    if !is_allowed_credentials(
+                                    if !is_credentials_allowed(
                                         header_credentials,
                                         &allowed_credentials,
                                     ) {
@@ -289,7 +289,7 @@ async fn handle_http_request(
             // Send the request to the final server
             match client.request(http_request).await {
                 Ok(response) => {
-                    // Отправляем ответ обратно клиенту
+                    // Send the response back to the client
                     let status = response.status();
                     let response_body = hyper::body::to_bytes(response.into_body()).await.unwrap();
 
@@ -301,14 +301,13 @@ async fn handle_http_request(
                     );
                     let full_response = [response.into_bytes(), response_body.to_vec()].concat();
 
-                    // Отправка полного ответа обратно клиенту
+                    // Send the full response back to the client
                     if let Err(e) = stream.write_all(&full_response).await {
                         eprintln!("Failed to write response to client: {:?}", e);
                     }
                 }
                 Err(e) => {
                     eprintln!("Error while forwarding request: {:?}", e);
-                    // Можно отправить ошибку клиенту
                 }
             }
         }
@@ -323,7 +322,7 @@ type RequestInfo = (String, String, String, HashMap<String, String>);
 fn parse_request(request: &str) -> Result<RequestInfo, &'static str> {
     let mut lines = request.lines();
 
-    // Получаем первую строку с методом, URI и версией
+    // Get the first line with the method, URI, and version
     let request_line = lines.next().ok_or("Missing request line")?;
     let mut request_parts = request_line.split_whitespace();
 
@@ -331,14 +330,14 @@ fn parse_request(request: &str) -> Result<RequestInfo, &'static str> {
     let uri = request_parts.next().ok_or("Missing URI")?.to_string();
     let version = request_parts.next().ok_or("Missing version")?.to_string();
 
-    // Инициализируем хэш-карту для заголовков
+    // Initialize a hash map for headers
     let mut headers = HashMap::new();
 
-    // Обрабатываем остальные строки как заголовки
+    // Process the rest of the lines as headers
     for line in lines {
         let line = line.trim();
         if line.is_empty() {
-            continue; // Пропускаем пустые строки
+            continue; // Skip empty lines
         }
         let (key, value) = parse_header(line)?;
         headers.insert(key.to_string().to_lowercase(), value.to_string());

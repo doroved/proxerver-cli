@@ -3,15 +3,16 @@ mod https;
 mod options;
 mod utils;
 
-use clap::Parser;
 use options::Opt;
-use utils::{get_current_server_ip, update_server_ip};
+use utils::get_server_ip;
+
+use clap::Parser;
+use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
     // Get server IP or use 0.0.0.0 if failed
-    update_server_ip().await;
-    let server_ip = get_current_server_ip();
+    let server_ip = get_server_ip().await;
 
     // Parse and validate CLI arguments
     let options = Opt::parse();
@@ -73,7 +74,7 @@ async fn main() {
             println!("Secret Token: {secret_token}");
         }
 
-        let bind_addr = format!("{}:{}", server_ip, http_port).parse().unwrap();
+        let bind_addr: SocketAddr = format!("{}:{}", server_ip, http_port).parse().unwrap();
 
         if let Err(e) = http::start_proxy(
             bind_addr,
@@ -119,7 +120,7 @@ async fn main() {
             println!("Secret Token: {secret_token}");
         }
 
-        let bind_addr = format!("{}:{}", server_ip, https_port).parse().unwrap();
+        let bind_addr: SocketAddr = format!("{}:{}", server_ip, https_port).parse().unwrap();
 
         if let Err(e) = https::start_proxy(
             bind_addr,
