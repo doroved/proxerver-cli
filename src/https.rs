@@ -197,7 +197,7 @@ pub async fn start_proxy(
                                 {
                                     if !is_allowed_credentials(
                                         header_credentials,
-                                        allowed_credentials,
+                                        &allowed_credentials,
                                     ) {
                                         let auth_response = create_basic_auth_response();
                                         if let Err(e) = stream.write_all(&auth_response).await {

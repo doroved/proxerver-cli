@@ -47,7 +47,7 @@ pub fn is_host_allowed(req_host: &str, allowed_hosts: &[String]) -> bool {
     false
 }
 
-pub fn is_allowed_credentials(credentials_header: &str, allowed_credentials: Vec<String>) -> bool {
+pub fn is_allowed_credentials(credentials_header: &str, allowed_credentials: &[String]) -> bool {
     for credentials in allowed_credentials {
         let allowed_credentials = b64.encode(credentials);
 
