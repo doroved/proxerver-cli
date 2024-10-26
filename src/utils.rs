@@ -1,21 +1,18 @@
 use base64::{engine::general_purpose::STANDARD as b64, Engine};
 use chrono::Local;
 use hyper::{header::PROXY_AUTHENTICATE, Body, Response, StatusCode};
-use lazy_static::lazy_static;
 use rand::Rng;
 use sha2::{Digest, Sha256};
 use std::net::{IpAddr, SocketAddr};
 use std::process::Command;
-use std::sync::RwLock;
+use std::sync::OnceLock;
 use wildmatch::WildMatch;
 
-lazy_static! {
-    pub static ref SERVER_IP: RwLock<String> = RwLock::new("0.0.0.0".to_string());
-}
+static SERVER_IP: OnceLock<IpAddr> = OnceLock::new();
 
 pub fn get_rand_ipv4_socket_addr() -> SocketAddr {
     let mut rng = rand::thread_rng();
-    let server_ip_addr = get_current_server_ip().parse::<IpAddr>().unwrap();
+    let server_ip_addr = get_current_server_ip();
 
     SocketAddr::new(server_ip_addr, rng.gen::<u16>())
 }
@@ -82,12 +79,13 @@ pub async fn get_server_ip() -> String {
 pub async fn update_server_ip() {
     let server_ip = get_server_ip().await;
 
-    let mut ip = SERVER_IP.write().unwrap();
-    *ip = server_ip;
+    SERVER_IP
+        .set(server_ip.parse::<IpAddr>().unwrap())
+        .expect("SERVER_IP уже инициализирован");
 }
 
-pub fn get_current_server_ip() -> String {
-    SERVER_IP.read().unwrap().clone()
+pub fn get_current_server_ip() -> IpAddr {
+    *SERVER_IP.get().expect("SERVER_IP не инициализирован")
 }
 
 pub fn to_sha256(input: &str) -> String {

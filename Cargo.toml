@@ -38,7 +38,6 @@ hyper-tls = "0.5"
 
 rustls-pemfile = "2.2.0"
 rustls-pki-types = "1.9.0"
-lazy_static = "1.5.0"
 chrono = "0.4.38"
 
 [profile.release]

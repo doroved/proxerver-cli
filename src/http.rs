@@ -14,7 +14,7 @@ use hyper::{
     Body, Client, Method, Request, Response, Server, StatusCode,
 };
 use std::{
-    net::{IpAddr, SocketAddr, ToSocketAddrs},
+    net::{SocketAddr, ToSocketAddrs},
     sync::{Arc, RwLock},
 };
 use tokio::{
@@ -122,7 +122,7 @@ impl Proxy {
     }
 
     async fn process_request(self, req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
-        let bind_addr = get_current_server_ip().parse::<IpAddr>().unwrap();
+        let bind_addr = get_current_server_ip();
 
         let mut http = HttpConnector::new();
         http.set_local_address(Some(bind_addr));
