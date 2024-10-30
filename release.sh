@@ -22,7 +22,7 @@ for arch in "${architectures[@]}"; do
         exit 1
     fi
 
-    # The build must be on Ubuntu 22.04, if you build on 24.04, you will get an error when running the binary on 22.04: 
+    # The build must be on Ubuntu 22.04, if you build on 24.04, you will get an error when running the binary on 22.04:
     # ./proxerver-v0.1.0-x86_64: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.39' not found (required by ./proxerver-v0.1.0-x86_64)
     # If you build on 20.04, you will get an error when running the binary on 22/24.04:
     # ./proxerver: error while loading shared libraries: libssl.so.1.1: cannot open shared object file: No such file or directory
@@ -43,6 +43,6 @@ for arch in "${architectures[@]}"; do
     short_arch=$(echo $arch | sed 's/-unknown-linux-gnu//')
     binary_name="${project_name}.${short_arch}"
     mv ${binary_name} ${project_name}
-    tar -czf "${binary_name}.tar.gz" "${project_name}"
+    tar -czf "${binary_name}.tar.gz" --no-xattr "${project_name}"
     rm "${project_name}"
 done
