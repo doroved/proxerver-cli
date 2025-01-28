@@ -1,5 +1,3 @@
 /target
-README-PRIVATE.md
-README-RU.md
-cloud-init.yml
-*.pem
+/certs
+config.dev.toml

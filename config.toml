@@ -1,0 +1,23 @@
+# HTTP server configuration
+[http]
+enabled = true     # true/false to enable/disable HTTP proxy server
+port = 8080        # Port to listen on
+allowed_hosts = [] # List of allowed hosts
+
+[http.auth]
+credentials = [] # List of allowed auth credentials
+tokens = []      # List of allowed auth tokens
+
+# HTTPS server configuration
+[https]
+enabled = false
+port = 443
+allowed_hosts = []
+
+[https.auth]
+credentials = []
+tokens = []
+
+[https.tls]
+cert = "" # Path to certificate file
+key = ""  # Path to private key file

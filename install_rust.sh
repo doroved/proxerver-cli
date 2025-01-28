@@ -2,35 +2,38 @@
 
 # Updating package lists
 echo "--> Updating package lists..."
-sudo apt update
+sudo apt update -y > /dev/null 2>&1
+sudo apt upgrade -y > /dev/null 2>&1
 
 # Installing necessary packages
 echo "--> Installing build-essential, pkg-config, and libssl-dev..."
-sudo apt install build-essential pkg-config libssl-dev -y
+sudo apt install build-essential pkg-config libssl-dev -y > /dev/null 2>&1
 
-# Installing Rust
+# Installing Rust without requiring confirmation
 echo "--> Installing Rust..."
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y > /dev/null 2>&1
 
-# Checking Ubuntu version
-echo "--> Checking Ubuntu version..."
-# cat /etc/os-release
-lsb_release -a
+# Install cross
+echo "--> Installing cross..."
+cargo install cross > /dev/null 2>&1
 
-# Checking GLIBC version
-echo "--> Checking GLIBC version..."
-ldd --version
+# Install musl-tools
+echo "--> Installing musl-tools..."
+sudo apt install musl-tools -y > /dev/null 2>&1
 
-# Checking libssl version
-echo "--> Checking libssl version..."
-ldconfig -p | grep libssl
+# Adding musl target
+echo "--> Adding musl target..."
+rustup target add x86_64-unknown-linux-musl > /dev/null 2>&1
+rustup target add aarch64-unknown-linux-musl > /dev/null 2>&1
 
-# Setting environment variables for OpenSSL
-echo "--> Setting environment variables for OpenSSL..."
-export OPENSSL_LIB_DIR=/usr/lib/$(arch)-linux-gnu
-export OPENSSL_INCLUDE_DIR=/usr/include/openssl
+# Installing docker
+echo "--> Installing docker..."
+curl -fsSL https://get.docker.com -o get-docker.sh > /dev/null 2>&1
+sudo sh get-docker.sh > /dev/null 2>&1
+rm get-docker.sh
+
+# Adding user to docker group
+echo "--> Adding user to docker group..."
+sudo usermod -aG docker $USER > /dev/null 2>&1
 
 echo "--> Installation completed!"
-echo "--> Setting up environment..."
-echo "To activate changes, run the command: source \$HOME/.cargo/env"
-echo "--> Checking rustc version: rustc --version"

@@ -1,48 +1,54 @@
 [package]
-name = "proxerver"
-version = "0.1.2"
+name = "proxerver-cli"
+version = "0.2.0"
 edition = "2021"
 authors = ["doroved"]
 description = "User Friendly HTTP and HTTPS (HTTP over TLS) proxy server."
 readme = "README.md"
-repository = "https://github.com/doroved/proxerver"
+repository = "https://github.com/doroved/proxerver-cli"
 license = "MIT OR Apache-2.0"
 keywords = ["proxy", "proxy-server", "http", "https", "http-over-tls"]
 categories = ["command-line-utilities", "network-programming"]
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [dependencies]
-hyper = { version = "0.14", features = [
-	"client",
-	"server",
-	"http1",
-	"runtime",
+tokio = { version = "1.43.0", features = [
+    "rt",
+    "rt-multi-thread",
+    "macros",
+    "process",
 ] }
-tokio = { version = "1.41.0", features = [
-	"net",
-	"rt-multi-thread",
-	"macros",
-	"io-util",
-] }
-base64 = "0.22.1"
-wildmatch = "2.3.0"
-daemonize = "0.5.0"
-rand = "0.8.5"
-futures-util = "0.3.30"
-clap = { version = "4.5.20", features = ["derive"] }
+
+hyper = { version = "1.5.2" }
+hyper-tls = "0.6.0"
+hyper-util = { version = "0.1.10", features = ["server", "http1", "http2"] }
+
+wildmatch = "2.4.0"
+clap = { version = "4.5.27", features = ["derive"] }
+serde = { version = "1.0.217", features = ["derive"] }
 sha2 = "0.10.8"
+bytes = "1.9.0"
+rlimit = "0.10.2"
+toml = "0.8.19"
 
-# http over tls. Если обновить 3 крейта ниже, то все сломается в https.rs
-rustls = "0.20"
-tokio-rustls = "0.23"
-hyper-tls = "0.5"
+http = "1.2.0"
+http-body-util = "0.1.2"
 
-rustls-pemfile = "2.2.0"
-rustls-pki-types = "1.9.0"
-chrono = "0.4.38"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19" }
+
+rustls = "0.23.21"
+tokio-rustls = "0.26.1"
+
+openssl = { version = "0.10.68", features = ["vendored"] }
+base64 = "0.22.1"
+
+
 
 [profile.release]
 panic = "abort"   # Strip expensive panic clean-up logic
 codegen-units = 1 # Compile crates one after another so the compiler can optimize better
 lto = true        # Enables link to optimizations
-opt-level = "z"   # Optimize for binary size s = 1.9 mb (aarch64) | z = 1.8 mb (aarch64)
+opt-level = "z"   # Optimize for binary size s = 1.4 mb | z = 1.2 mb
 strip = true      # Remove debug symbols

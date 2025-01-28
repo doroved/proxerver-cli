@@ -1,0 +1,37 @@
+# HTTP server configuration
+[http]
+enabled = true
+port = 8080
+allowed_hosts = []
+
+[http.auth]
+credentials = []
+tokens = []
+
+# HTTPS server configuration
+[https]
+enabled = true
+port = 443
+allowed_hosts = [
+    # Youtube
+    "youtu.be",
+    "*.googlevideo.com",
+    "*.youtube.com",
+    "*.ytimg.com",
+    "*.ggpht.com",
+    "*.googleapis.com",
+    # Discord
+    "*discord*.*",
+]
+
+[https.auth]
+credentials = ["user:pass", "user2:pass2", "user3:pass3"]
+tokens = [
+    "eb43660b36516c77d677be623a0cd7c895c890a71cbe5aa902326d516285b6e5",
+    "42dd16829a94f7393658311558eea8b51566da2afd262e51094b308740dce347",
+    # "a9d8f2bdce2fd548fab769cf1ddca0a4043a50583030fe2a391507b8f352bd01"
+]
+
+[https.tls]
+cert = "/etc/letsencrypt/live/example.com/cert.pem"
+key = "/etc/letsencrypt/live/example.com/privkey.pem"
